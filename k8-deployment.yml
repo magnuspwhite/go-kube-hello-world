@@ -1,0 +1,58 @@
+# app config
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: validity
+spec:
+  replicas: 1
+  strategy:
+    type: "RollingUpdate"
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: validity
+  template:
+    metadata:
+      labels:
+        app: validity
+        runtime: go
+        os: alpine
+    spec:
+      containers:
+        - name: validity
+          image: magnuspwhite/validity:1.0.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          livenessProbe: # healthcheck
+            httpGet:
+              path: /healthcheck
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 15
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+---
+# port forwarding service
+apiVersion: v1
+kind: Service
+metadata:
+  name: validity-service
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: validity
